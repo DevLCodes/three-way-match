@@ -13,3 +13,5 @@ For every step:
 7. Stop and wait for the owner's go-ahead before the next step.
 
 At the end of each phase, update `system-design/three-way-match.html` in `~/Projects/agentic-ai-notebook` (branch `design-three-way-match`) so its build steps and component links point to this repo, and run that repo's `check.py`.
+
+Agentic AI notebook integration: yes

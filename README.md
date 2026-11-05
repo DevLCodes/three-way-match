@@ -5,6 +5,7 @@ Matches purchase orders, goods receipts and invoices read from PDFs, holds anyth
 This repo is built in small, observable steps. Each step's command, real output and explanation is in [`docs/steps/`](docs/steps/).
 
 - **High-level design:** [Three-Way Match Agent](https://devlcodes.github.io/agentic-ai-notebook/system-design/three-way-match.html) in the [agentic-ai-notebook](https://github.com/DevLCodes/agentic-ai-notebook) system designs
+- **Report:** [docs/DESIGN.md](docs/DESIGN.md)
 - **Low-level design:** [docs/LLD.md](docs/LLD.md)
 - **Build plan:** [docs/superpowers/specs/2026-11-05-three-way-match-rebuild-design.md](docs/superpowers/specs/2026-11-05-three-way-match-rebuild-design.md)
 - **Reference implementation:** the earlier `DevLCodes/three-way-match-agent` repo (private)
