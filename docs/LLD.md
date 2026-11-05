@@ -11,8 +11,34 @@ High-level design: [Three-Way Match Agent](https://devlcodes.github.io/agentic-a
 | [`src/three_way_match/render.py`](../src/three_way_match/render.py) | Render PDF pages to PNG within the parser's size limit | [01.2](steps/01.2-render-pages.md) |
 | [`src/three_way_match/parse.py`](../src/three_way_match/parse.py) | Read a page image with Nemotron 3.5 Parse | [01.3](steps/01.3-parse-page.md) |
 | [`src/three_way_match/clean.py`](../src/three_way_match/clean.py) | Strip layout tags from parsed text | [01.4](steps/01.4-clean-text.md) |
+| [`src/three_way_match/schemas.py`](../src/three_way_match/schemas.py) | Pydantic models for extracted documents | [01.5](steps/01.5-data-models.md) |
 
 ## Data model
+
+Pydantic models in [`schemas.py`](../src/three_way_match/schemas.py), added in [01.5](steps/01.5-data-models.md). `LineItem` and `Document` set `extra="forbid"`. Money is `Decimal`, never `float`.
+
+```mermaid
+classDiagram
+    class DocType {
+        <<StrEnum>>
+        PO = purchase_order
+        RECEIPT = receipt
+        INVOICE = invoice
+    }
+    class LineItem {
+        product: str, min_length 1
+        quantity: Decimal >= 0
+        unit_price: Decimal >= 0 | None
+    }
+    class Document {
+        order_id: str, min_length 1
+        doc_date: str | None
+        party: str | None
+        lines: list~LineItem~
+        total: Decimal | None
+    }
+    Document "1" *-- "many" LineItem
+```
 
 ## Document reading pipeline
 
