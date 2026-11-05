@@ -12,6 +12,7 @@ High-level design: [Three-Way Match Agent](https://devlcodes.github.io/agentic-a
 | [`src/three_way_match/parse.py`](../src/three_way_match/parse.py) | Read a page image with Nemotron 3.5 Parse | [01.3](steps/01.3-parse-page.md) |
 | [`src/three_way_match/clean.py`](../src/three_way_match/clean.py) | Strip layout tags from parsed text | [01.4](steps/01.4-clean-text.md) |
 | [`src/three_way_match/schemas.py`](../src/three_way_match/schemas.py) | Pydantic models for extracted documents | [01.5](steps/01.5-data-models.md) |
+| [`src/three_way_match/extract.py`](../src/three_way_match/extract.py) | LLM extraction of a `Document` with one validation retry | [01.6](steps/01.6-llm-extraction.md) |
 
 ## Data model
 
@@ -47,6 +48,9 @@ def fetch_pdf(kind: str, order_id: str, client: httpx.Client | None = None, pdf_
 def render(pdf_path: Path, out_dir: Path = Path("data/pages")) -> list[Path]
 def parse_page(image: Path, cache_dir: Path = Path("data/parsed"), client: httpx.Client | None = None) -> str
 def clean(content: str) -> str
+def chat(messages: list[dict[str, str]]) -> str
+def json_object(reply: str) -> str
+def extract(text: str, doc_type: DocType, attempts: int = 2, chat: Chat = chat) -> Document
 ```
 
 | Step | Detail | Cache |
@@ -55,6 +59,7 @@ def clean(content: str) -> str
 | Render ([01.2](steps/01.2-render-pages.md)) | pypdfium2; scale = min(1664 / width, 2048 / height) with page size in points; RGB PNG; `thumbnail((1664, 2048))` corrects pdfium's round-up overshoot. Output `<stem>_p<n>.png` | `data/pages/`, per page |
 | Parse ([01.3](steps/01.3-parse-page.md)) | `POST https://ai.api.nvidia.com/v1/retrieval/nvidia/nemotron-3.5-parse/parse`, multipart parts `document` (PNG) and `options` (`{"decoding":{"max_output_tokens":4096}}`), `Authorization: Bearer $NVIDIA_API_KEY`, 120 s timeout. Returns JSON `content`: one paragraph per block, `<x_..><y_..>` box corners as page fractions, `<class_..>` block type, Markdown bold, LaTeX `tabular` for tables | `data/parsed/<stem>.txt`, per page |
 | Clean ([01.4](steps/01.4-clean-text.md)) | Split on `\n\n`; drop blocks containing `<class_Picture>`; remove `<x_[\d.]+>`, `<y_[\d.]+>`, `<class_[\w-]+>`; strip. Keeps Markdown bold and LaTeX tables. Invoice 10250: 783 → 470 characters | None (cheap) |
+| Extract ([01.6](steps/01.6-llm-extraction.md)) | `POST https://integrate.api.nvidia.com/v1/chat/completions`, model `EXTRACT_MODEL` (default `nvidia/nemotron-3.5-lightning-30b-a3b`), temperature 0, `max_tokens` 8192 (includes reasoning), 300 s timeout. Prompt puts the text inside `<document>` tags and says it is data. Reply cut to outermost `{...}`, validated with `Document.model_validate_json`. On `ValidationError`: append reply (assistant) and error (user), retry once; second failure raises. `chat` is injectable for tests. Invoice 10250: 32.7 s | None yet |
 
 ## Matching rules
 
