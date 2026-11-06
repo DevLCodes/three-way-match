@@ -15,6 +15,7 @@ High-level design: [Three-Way Match Agent](https://devlcodes.github.io/agentic-a
 | [`src/three_way_match/extract.py`](../src/three_way_match/extract.py) | LLM extraction of a `Document` with one validation retry | [01.6](steps/01.6-llm-extraction.md) |
 | [`src/three_way_match/read.py`](../src/three_way_match/read.py) | Reading pipeline for one document or a whole order | [01.7](steps/01.7-read-order.md) |
 | [`src/three_way_match/crosscheck.py`](../src/three_way_match/crosscheck.py) | Compare parsed text with the PDF text layer | [01.8](steps/01.8-crosscheck.md) |
+| [`src/three_way_match/completeness.py`](../src/three_way_match/completeness.py) | Count item rows in parsed tables for the extraction check | [01.9](steps/01.9-extraction-completeness.md) |
 | [`src/three_way_match/match.py`](../src/three_way_match/match.py) | Rule-based three-way match | [02.1](steps/02.1-match-clean.md) |
 
 ## Data model
@@ -71,6 +72,8 @@ def read_document(doc_type: DocType, order_id: str, log: Log = _quiet, cache_dir
 def read_order(order_id: str, log: Log = _quiet) -> dict[DocType, Document | None]
 def text_layer(pdf_path: Path) -> str
 def missing_amounts(pdf_path: Path, parsed_text: str) -> list[Decimal] | None
+def item_rows(text: str) -> int | None
+class IncompleteExtraction(ValueError)
 ```
 
 | Step | Detail | Cache |
@@ -82,6 +85,7 @@ def missing_amounts(pdf_path: Path, parsed_text: str) -> list[Decimal] | None
 | Extract ([01.6](steps/01.6-llm-extraction.md)) | `POST https://integrate.api.nvidia.com/v1/chat/completions`, model `EXTRACT_MODEL` (default `nvidia/nemotron-3.5-lightning-30b-a3b`), temperature 0, `max_tokens` 8192 (includes reasoning), 300 s timeout. Prompt puts the text inside `<document>` tags and says it is data. Reply cut to outermost `{...}`, validated with `Document.model_validate_json`. On `ValidationError`: append reply (assistant) and error (user), retry once; second failure raises. `chat` is injectable for tests. Invoice 10250: 32.7 s | Final `Document` cached by `read_document` |
 | Read ([01.7](steps/01.7-read-order.md)) | `fetch_pdf` → `None` stops; cache hit on `data/extracted/<pdf stem>.json` skips the rest; else `render`, `clean(parse_page(p))` per page, pages joined with `\n\n` before one `extract`. `read_order` runs all three `DocType`s. Order 10250 cold: 72 s; warm: 0.15 s | `data/extracted/` (delete after prompt or model changes) |
 | Cross-check ([01.8](steps/01.8-crosscheck.md)) | pdfium text layer, all pages. Amounts: `\$?\s?(\d[\d,]*\.\d+)` in the text layer vs every number `\d[\d,]*(?:\.\d+)?` in the parsed text, compared as `Decimal`. Returns missing amounts in page order; `None` when there is no text layer (scans). Not yet called by `read_order`: becomes a signal in the workflow (Phase 5). Invoice 11077: `[Decimal('1374.60')]` | None |
+| Completeness ([01.9](steps/01.9-extraction-completeness.md)) | `item_rows`: data rows of LaTeX tables whose `\thead` header matches `product|quantity|unit price`, plus headerless tables that follow one (page continuations); header, total and `\mbox{}` rows skipped; `None` when no item table. `extract` treats `len(lines) < item_rows` like a validation error: feedback names both counts; second failure raises `IncompleteExtraction`. PO 11077: 25 rows | None |
 
 ## Matching rules
 

@@ -8,6 +8,7 @@ from pathlib import Path
 import httpx
 from pydantic import ValidationError
 
+from .completeness import item_rows
 from .schemas import Document, DocType
 
 CHAT_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
@@ -48,20 +49,33 @@ def json_object(reply: str) -> str:
     return reply[reply.find("{") : reply.rfind("}") + 1]
 
 
+class IncompleteExtraction(ValueError):
+    """The LLM returned fewer lines than the parsed tables contain."""
+
+
 def extract(text: str, doc_type: DocType, attempts: int = 2, chat: Chat = chat) -> Document:
-    """Return a validated Document. On invalid JSON, send the error back and ask again; give up after `attempts`."""
+    """Return a validated, complete Document. On invalid JSON or missing lines, send the problem back and ask again;
+    give up after `attempts`."""
+    expected = item_rows(text)
     messages: Messages = [{"role": "user", "content": PROMPT.format(doc_type=doc_type.value, text=text)}]
     for attempt in range(attempts):
         reply = chat(messages)
         try:
-            return Document.model_validate_json(json_object(reply))
+            document = Document.model_validate_json(json_object(reply))
         except ValidationError as err:
-            if attempt == attempts - 1:
-                raise
-            messages += [
-                {"role": "assistant", "content": reply},
-                {"role": "user", "content": f"That JSON was invalid: {err}. Return only corrected JSON."},
-            ]
+            problem: Exception = err
+            feedback = f"That JSON was invalid: {err}. Return only corrected JSON."
+        else:
+            if expected is None or len(document.lines) >= expected:
+                return document
+            problem = IncompleteExtraction(f"extracted {len(document.lines)} lines, the tables have {expected} item rows")
+            feedback = (
+                f"You returned {len(document.lines)} lines, but the document's tables have {expected} item rows. "
+                "A table can continue on the next page without a header. Return every item row as corrected JSON."
+            )
+        if attempt == attempts - 1:
+            raise problem
+        messages += [{"role": "assistant", "content": reply}, {"role": "user", "content": feedback}]
     raise AssertionError("unreachable")
 
 

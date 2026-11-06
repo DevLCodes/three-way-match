@@ -90,6 +90,7 @@ Each step is one runnable piece. Order matters: each builds on the ones before.
 | 1.6 | Extract a `Document` with the LLM, with a retry on invalid JSON | The extracted JSON; a forced retry |
 | 1.7 | Read all three documents for an order | Three `Document`s for order 10250 |
 | 1.8 | Cross-check parsed values against the PDF text layer | The difference found on invoice 11077 |
+| 1.9 | Extraction completeness check (added after step 2.2 found PO 11077 losing page 2's lines) | PO 11077 returning all 25 lines after a retry |
 
 ### Phase 2: Matching
 
