@@ -13,6 +13,7 @@ High-level design: [Three-Way Match Agent](https://devlcodes.github.io/agentic-a
 | [`src/three_way_match/clean.py`](../src/three_way_match/clean.py) | Strip layout tags from parsed text | [01.4](steps/01.4-clean-text.md) |
 | [`src/three_way_match/schemas.py`](../src/three_way_match/schemas.py) | Pydantic models for extracted documents | [01.5](steps/01.5-data-models.md) |
 | [`src/three_way_match/extract.py`](../src/three_way_match/extract.py) | LLM extraction of a `Document` with one validation retry | [01.6](steps/01.6-llm-extraction.md) |
+| [`src/three_way_match/read.py`](../src/three_way_match/read.py) | Reading pipeline for one document or a whole order | [01.7](steps/01.7-read-order.md) |
 
 ## Data model
 
@@ -51,6 +52,8 @@ def clean(content: str) -> str
 def chat(messages: list[dict[str, str]]) -> str
 def json_object(reply: str) -> str
 def extract(text: str, doc_type: DocType, attempts: int = 2, chat: Chat = chat) -> Document
+def read_document(doc_type: DocType, order_id: str, log: Log = _quiet, cache_dir: Path = Path("data/extracted")) -> Document | None
+def read_order(order_id: str, log: Log = _quiet) -> dict[DocType, Document | None]
 ```
 
 | Step | Detail | Cache |
