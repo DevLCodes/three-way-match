@@ -28,3 +28,17 @@ class Document(BaseModel):
     party: str | None = None
     lines: list[LineItem]
     total: Decimal | None = None
+
+
+class Exception_(BaseModel):
+    """One reason a case can't be approved. Named with a trailing _ because Python already has `Exception`."""
+
+    code: str
+    product: str | None = None
+    detail: str
+
+
+class MatchResult(BaseModel):
+    order_id: str
+    approved: bool
+    exceptions: list[Exception_]

@@ -15,6 +15,7 @@ High-level design: [Three-Way Match Agent](https://devlcodes.github.io/agentic-a
 | [`src/three_way_match/extract.py`](../src/three_way_match/extract.py) | LLM extraction of a `Document` with one validation retry | [01.6](steps/01.6-llm-extraction.md) |
 | [`src/three_way_match/read.py`](../src/three_way_match/read.py) | Reading pipeline for one document or a whole order | [01.7](steps/01.7-read-order.md) |
 | [`src/three_way_match/crosscheck.py`](../src/three_way_match/crosscheck.py) | Compare parsed text with the PDF text layer | [01.8](steps/01.8-crosscheck.md) |
+| [`src/three_way_match/match.py`](../src/three_way_match/match.py) | Rule-based three-way match | [02.1](steps/02.1-match-clean.md) |
 
 ## Data model
 
@@ -40,8 +41,21 @@ classDiagram
         lines: list~LineItem~
         total: Decimal | None
     }
+    class Exception_ {
+        code: str
+        product: str | None
+        detail: str
+    }
+    class MatchResult {
+        order_id: str
+        approved: bool
+        exceptions: list~Exception_~
+    }
     Document "1" *-- "many" LineItem
+    MatchResult "1" *-- "many" Exception_
 ```
+
+`Exception_` and `MatchResult` added in [02.1](steps/02.1-match-clean.md).
 
 ## Document reading pipeline
 
@@ -70,6 +84,25 @@ def missing_amounts(pdf_path: Path, parsed_text: str) -> list[Decimal] | None
 | Cross-check ([01.8](steps/01.8-crosscheck.md)) | pdfium text layer, all pages. Amounts: `\$?\s?(\d[\d,]*\.\d+)` in the text layer vs every number `\d[\d,]*(?:\.\d+)?` in the parsed text, compared as `Decimal`. Returns missing amounts in page order; `None` when there is no text layer (scans). Not yet called by `read_order`: becomes a signal in the workflow (Phase 5). Invoice 11077: `[Decimal('1374.60')]` | None |
 
 ## Matching rules
+
+```python
+def product_key(product: str) -> str
+def match(po: Document | None, receipt: Document | None, invoice: Document) -> MatchResult
+```
+
+Added in [02.1](steps/02.1-match-clean.md). Lines are joined by `product_key` (casefold, whitespace collapsed). `TOLERANCE = Decimal("0.01")` for prices and totals. `approved = not exceptions`. No LLM.
+
+| Code | Condition |
+|---|---|
+| `missing_po` | `po is None` |
+| `missing_receipt` | `receipt is None` |
+| `not_on_po` | Invoice line key not in PO |
+| `quantity_vs_po` | Invoice quantity ≠ PO quantity |
+| `price_missing` | Either unit price is `None` |
+| `price_vs_po` | Unit prices differ by more than the tolerance |
+| `not_received` | Invoice line key not in receipt |
+| `quantity_vs_receipt` | Invoice quantity > received quantity |
+| `total_mismatch` | Invoice total is `None`, or differs from the sum of quantity × unit price by more than the tolerance |
 
 ## Workflow state machine
 
