@@ -117,3 +117,14 @@ Added in [02.1](steps/02.1-match-clean.md). Lines are joined by `product_key` (c
 ## Telemetry
 
 ## Deployment
+
+### Local stack ([03.1](steps/03.1-local-supabase.md))
+
+| Setting | Value |
+|---|---|
+| Tool | Supabase CLI 3.0.0 (`brew install supabase/tap/supabase`); `supabase start` / `supabase stop` |
+| Config | [`supabase/config.toml`](../supabase/config.toml), project id `three-way-match` |
+| Postgres | 17.11, `postgresql://postgres:postgres@127.0.0.1:54322/postgres` (local defaults) |
+| Studio | http://127.0.0.1:54323 |
+| Extensions available | pgmq 1.5.1, pg_cron 1.6.4, pg_net 0.20.4, vector 0.8.2 |
+| `DATABASE_URL` | Read by code; defaults to the local URL |

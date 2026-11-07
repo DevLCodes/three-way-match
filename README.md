@@ -12,8 +12,9 @@ This repo is built in small, observable steps. Each step's command, real output 
 
 ## Run
 
-Requires [uv](https://docs.astral.sh/uv/).
+Requires [uv](https://docs.astral.sh/uv/), Docker and the [Supabase CLI](https://supabase.com/docs/guides/local-development) (`brew install supabase/tap/supabase`).
 
 ```bash
+supabase start        # local Postgres and the rest of the Supabase stack
 uv run pytest
 ```
